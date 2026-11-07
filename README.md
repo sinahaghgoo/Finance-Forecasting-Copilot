@@ -13,8 +13,9 @@ The pipeline is designed to be data-source-agnostic. It ships with three loaders
 same panel schema: a **synthetic** generator baked into the repo (the default, so everything
 is reproducible with no external dependencies), **UCI Online Retail II** (a public UK-based
 online-retail dataset, downloaded directly from UCI with no credentials needed), and
-**Kaggle Rossmann Store Sales** (requires a Kaggle API key). The forecaster, scenario engine
-and agent run unchanged on any of the three.
+**Kaggle Rossmann Store Sales** via a CC0-licensed mirror (needs a Kaggle login but no
+competition rules acceptance). The forecaster, scenario engine and agent run unchanged on
+any of the three.
 
 ---
 
@@ -41,7 +42,7 @@ tool output.
           │  Pluggable data source                       │
           │   • synthetic panel (default, reproducible)  │
           │   • UCI Online Retail II (public download)   │
-          │   • Kaggle Rossmann Store Sales (API key)    │
+          │   • Kaggle Rossmann Store Sales (CC0 mirror) │
           │  → normalised to one (date, category,        │
           │     region, revenue, units, price, cogs, gp) │
           └────────────────────┬─────────────────────────┘
@@ -98,6 +99,22 @@ Walk-forward backtest, 6 folds × 28-day horizon, held out from the tail:
 | Pinball @ q90    | 4,290  | 1,726  |
 | 80% PI coverage  | 0.65   | 0.04   |
 
+### Rossmann Store Sales (real data, Kaggle CC0 mirror)
+
+Same model and features, 4 folds × 28-day horizon on 6 (store-type × assortment) series
+built from ~1.6 M daily store records:
+
+| Metric           | Mean   |
+|------------------|--------|
+| MAPE             | ~ 11 % |
+| sMAPE            | ~ 11 % |
+| 80% PI coverage  | ~ 0.52 |
+
+A clean mid-single-digit-to-low-double-digit error on 28-day holdouts of real multi-store
+retail sales. The loader filters out days where fewer than half the usual stores were open
+(German public holidays, mostly) and drops storetype × assortment combinations with fewer
+than 30 stores, since tiny-sample series behave more like noise than signal.
+
 ### UCI Online Retail II (real data, UK subset)
 
 Same model, 4 folds × 14-day horizon on the UK series only (the countries with volume high
@@ -108,13 +125,13 @@ enough for percentage-based metrics to be meaningful):
 | MAPE (per category) | 30 – 50 % |
 | 80% PI coverage     | ~ 0.63 |
 
-Real retail data is far noisier than the synthetic panel — big pre-Christmas spikes, only
-~740 days of history (so the yearly-lag feature has one cycle to learn from), and no promo
-calendar. The point forecast lands within tens of percent, but the 80% intervals still
-catch roughly two-thirds of the outcomes. That is the honest value of the uncertainty
-layer: when the point estimate is weak the model says so, instead of being confidently wrong.
+Online Retail II is noticeably harder than Rossmann — much shorter history (~740 days vs
+913), only one prior Christmas peak to learn from, and no promo-calendar features. The
+point forecast lands within tens of percent, but the 80% intervals still catch roughly
+two-thirds of the outcomes. That is the honest value of the uncertainty layer: when the
+point estimate is weak the model says so, instead of being confidently wrong.
 
-Natural next steps that would close the gap: weekly aggregation for the planning view,
+Natural next steps for either real dataset: weekly aggregation for the planning view,
 exogenous promo/marketing features, and isotonic or conformal calibration of the quantiles.
 
 ---
@@ -148,14 +165,17 @@ fincopilot backtest
 # UCI Online Retail II — downloads ~45 MB from archive.ics.uci.edu on first use
 FINCOPILOT_DATA_SOURCE=online_retail fincopilot backtest
 
-# Kaggle Rossmann Store Sales — needs kaggle.json and competition rules acceptance
+# Kaggle Rossmann Store Sales — CC0 mirror, authenticated download
 pip install -e ".[kaggle]"
-python scripts/fetch_rossmann.py           # one-off download + panel build
+kaggle auth login                          # one-off OAuth, caches ~/.kaggle/credentials.json
+python scripts/fetch_rossmann.py           # downloads ~7 MB and builds the panel
 FINCOPILOT_DATA_SOURCE=rossmann fincopilot backtest
 ```
 
-Rossmann requires a Kaggle API token at `~/.kaggle/kaggle.json` plus accepting the
-competition rules once at <https://www.kaggle.com/competitions/rossmann-store-sales/rules>.
+The Rossmann loader pulls from the CC0 mirror
+`pratyushakar/rossmann-store-sales` (same `train.csv` / `store.csv` as the original
+competition) so no rules acceptance is needed. Any Kaggle account that can run
+`kaggle datasets list` is enough.
 
 ### CLI
 

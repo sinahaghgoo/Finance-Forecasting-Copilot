@@ -7,7 +7,7 @@ import pandas as pd
 
 from fin_copilot.config import DATA_RAW
 
-COMPETITION = "rossmann-store-sales"
+DATASET = "pratyushakar/rossmann-store-sales"
 RAW_DIR = DATA_RAW / "rossmann"
 PANEL_PATH = DATA_RAW / "rossmann_panel.parquet"
 
@@ -29,10 +29,9 @@ def download_raw(force: bool = False) -> Path:
 
     api = KaggleApi()
     api.authenticate()
-    api.competition_download_files(COMPETITION, path=str(RAW_DIR), quiet=False)
+    api.dataset_download_files(DATASET, path=str(RAW_DIR), quiet=False, unzip=False)
 
-    zip_path = RAW_DIR / f"{COMPETITION}.zip"
-    if zip_path.exists():
+    for zip_path in RAW_DIR.glob("*.zip"):
         with zipfile.ZipFile(zip_path) as zf:
             zf.extractall(RAW_DIR)
         zip_path.unlink()
@@ -50,40 +49,42 @@ def _load_raw() -> tuple[pd.DataFrame, pd.DataFrame]:
     return train, store
 
 
+MIN_STORES_PER_GROUP = 30
+MIN_COVERAGE_FRACTION = 0.5
+
+
 def to_panel(save: bool = True, force: bool = False) -> pd.DataFrame:
     download_raw(force=force)
     train, store = _load_raw()
 
-    train = train[train["Open"] == 1].copy()
-    train = train[train["Sales"] > 0]
-
+    train = train[(train["Open"] == 1) & (train["Sales"] > 0)].copy()
     merged = train.merge(store[["Store", "StoreType", "Assortment"]], on="Store", how="left")
     merged["category"] = merged["StoreType"].map(STORETYPE_NAMES)
     merged["region"] = merged["Assortment"].map(ASSORTMENT_NAMES)
 
+    store_counts = merged.groupby(["category", "region"])["Store"].nunique()
+    keep = store_counts[store_counts >= MIN_STORES_PER_GROUP].index
+    merged = merged[merged.set_index(["category", "region"]).index.isin(keep)].copy()
+
     panel = (
         merged.groupby(["Date", "category", "region"], observed=True)
-        .agg(revenue=("Sales", "sum"), units_sold=("Customers", "sum"))
+        .agg(
+            revenue=("Sales", "sum"),
+            units_sold=("Customers", "sum"),
+            n_open=("Store", "nunique"),
+        )
         .reset_index()
         .rename(columns={"Date": "date"})
     )
 
-    panel = panel[(panel["revenue"] > 0) & (panel["units_sold"] > 0)].copy()
+    typical = panel.groupby(["category", "region"])["n_open"].transform("quantile", 0.9)
+    panel = panel[panel["n_open"] >= MIN_COVERAGE_FRACTION * typical].copy()
+
     panel["avg_price"] = (panel["revenue"] / panel["units_sold"]).round(2)
     panel["cogs"] = (panel["revenue"] * panel["category"].map(COGS_RATE_BY_TYPE)).round(2)
     panel["gross_profit"] = (panel["revenue"] - panel["cogs"]).round(2)
-
-    full_index = pd.MultiIndex.from_product(
-        [panel["date"].unique(), panel["category"].unique(), panel["region"].unique()],
-        names=["date", "category", "region"],
-    )
-    panel = panel.set_index(["date", "category", "region"]).reindex(full_index).reset_index()
+    panel = panel.drop(columns=["n_open"])
     panel = panel.sort_values(["category", "region", "date"]).reset_index(drop=True)
-    for col in ["revenue", "units_sold", "cogs", "gross_profit", "avg_price"]:
-        panel[col] = panel.groupby(["category", "region"], observed=True)[col].transform(
-            lambda s: s.ffill().bfill()
-        )
-    panel = panel.dropna(subset=["revenue"])
 
     if save:
         PANEL_PATH.parent.mkdir(parents=True, exist_ok=True)

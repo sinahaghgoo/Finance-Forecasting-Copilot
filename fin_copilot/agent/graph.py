@@ -68,7 +68,7 @@ def build_agent(llm: BaseChatModel | None = None, tools: list | None = None) -> 
     tools = tools or ALL_TOOLS
     llm = llm if llm is not None else _build_llm()
     llm_with_tools = llm.bind_tools(tools)
-    tool_node = ToolNode(tools)
+    tool_node = ToolNode(tools, handle_tool_errors=True)
 
     def agent_node(state: AgentState) -> dict:
         reply = llm_with_tools.invoke(state["messages"])

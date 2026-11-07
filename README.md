@@ -12,10 +12,8 @@ A small, end-to-end analytics system that a finance team could actually sit next
 The pipeline is designed to be data-source-agnostic. It ships with three loaders behind the
 same panel schema: a **synthetic** generator baked into the repo (the default, so everything
 is reproducible with no external dependencies), **UCI Online Retail II** (a public UK-based
-online-retail dataset, downloaded directly from UCI with no credentials needed), and
-**Kaggle Rossmann Store Sales** via a CC0-licensed mirror (needs a Kaggle login but no
-competition rules acceptance). The forecaster, scenario engine and agent run unchanged on
-any of the three.
+online-retail dataset, downloaded directly from UCI), and **Kaggle Rossmann Store Sales**. 
+The forecaster, scenario engine and agent run unchanged on any of the three.
 
 ---
 
@@ -41,8 +39,8 @@ tool output.
           ┌──────────────────────────────────────────────┐
           │  Pluggable data source                       │
           │   • synthetic panel (default, reproducible)  │
-          │   • UCI Online Retail II (public download)   │
-          │   • Kaggle Rossmann Store Sales (CC0 mirror) │
+          │   • UCI Online Retail II                     │
+          │   • Kaggle Rossmann Store Sales              │
           │  → normalised to one (date, category,        │
           │     region, revenue, units, price, cogs, gp) │
           └────────────────────┬─────────────────────────┘
@@ -86,7 +84,7 @@ tool output.
 
 ## Results
 
-### Synthetic panel (default)
+### Synthetic panel (default and fully reproduceable)
 
 Walk-forward backtest, 6 folds × 28-day horizon, held out from the tail:
 
@@ -167,8 +165,7 @@ FINCOPILOT_DATA_SOURCE=online_retail fincopilot backtest
 
 # Kaggle Rossmann Store Sales — CC0 mirror, authenticated download
 pip install -e ".[kaggle]"
-kaggle auth login                          # one-off OAuth, caches ~/.kaggle/credentials.json
-python scripts/fetch_rossmann.py           # downloads ~7 MB and builds the panel
+python scripts/fetch_rossmann.py           # downloads ~9 MB and builds the panel (mirrored the data like that so Kaggle Auth. is no problem)
 FINCOPILOT_DATA_SOURCE=rossmann fincopilot backtest
 ```
 
@@ -254,15 +251,16 @@ with explicit source IDs per number, and a human-in-the-loop review for edge cas
 
 ## What I'd add next
 
-- **Interval calibration** – isotonic or split-conformal calibration on a held-out window
-  to close the coverage gap.
+
 - **More features** – known promotional calendars, exchange-rate signals, inventory
   constraints. Right now the model infers promos from history alone.
 - **More tools** – a `compare_scenarios` tool that runs two scenarios side by side and
   returns the diff, a `forecast_gross_profit` tool that bakes assumed cost paths in.
-- **Evaluation harness** – expand from ~7 to a few dozen seeded questions, split by
+- **Evaluation harness** – expand to a few dozen seeded questions, split by
   question type (lookup / forecast / scenario / out-of-scope) and track hallucination
   rate by type.
+  - **Interval calibration** – isotonic or split-conformal calibration on a held-out window
+  to close the coverage gap.
 - **Deployment** – the Dockerfile builds a thin runtime image; a real deployment would
   split model training (batch job) from the agent server (FastAPI) and persist the
   trained model somewhere durable.

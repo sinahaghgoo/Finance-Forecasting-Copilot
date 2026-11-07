@@ -320,9 +320,3 @@ with explicit source IDs per number, and a human-in-the-loop review for edge cas
 
 ---
 
-## Licence & author
-
-MIT licence — see [`pyproject.toml`](pyproject.toml) for the SPDX identifier.
-
-Built by **Sina Haghgoo** as a portfolio project.
-GitHub: [@sinahaghgoo](https://github.com/sinahaghgoo) · Email: shaghgoo47@gmail.com

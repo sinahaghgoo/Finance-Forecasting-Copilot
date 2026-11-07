@@ -213,9 +213,10 @@ pytest -q
 ruff check fin_copilot tests scripts
 ```
 
-The test suite covers the data generator, feature engineering, the LightGBM forecaster,
-scenario math, the grounding metric, and the agent graph driven by a scripted chat model —
-so no API key is needed to run the tests.
+The 55-test suite covers the synthetic generator, both real-data loaders (with mocked
+downloads), feature engineering, the LightGBM forecaster, the scenario engine, the
+grounding metric, CLI dispatch, and the agent graph driven by a scripted chat model —
+so neither Ollama nor an API key is needed to run the tests.
 
 ---
 
@@ -223,18 +224,27 @@ so no API key is needed to run the tests.
 
 ```
 fin_copilot/
-├── data/                synthetic panel generator + loader
-├── forecasting/         features, LightGBM quantile model, walk-forward backtest
-├── scenarios/           gross-profit what-if engine (price × cost × elasticity)
-├── agent/               LangGraph agent, tools, prompt, cached context
-└── evaluation/          forecast metrics, grounding / hallucination scoring, eval cases
+├── data/
+│   ├── generate.py       synthetic finance panel generator
+│   ├── rossmann.py       Kaggle Rossmann loader (CC0 mirror)
+│   ├── online_retail.py  UCI Online Retail II loader
+│   └── loader.py         dispatches to the active source (FINCOPILOT_DATA_SOURCE)
+├── forecasting/          features, LightGBM quantile model, walk-forward backtest
+├── scenarios/            gross-profit what-if engine (price × cost × elasticity)
+├── agent/                LangGraph agent, tools, prompt, cached model/context
+│                         providers: Ollama (default, local), OpenAI, Anthropic
+└── evaluation/           forecast metrics, grounding / hallucination scoring, eval cases
 
-tests/                   pytest suite, incl. scripted-LLM agent integration test
-scripts/                 train + backtest + cache the production model, fetch_rossmann
+tests/                    55-test pytest suite covering data generators, loaders
+                          (with mocked downloads), features, LightGBM, scenarios,
+                          grounding, CLI dispatch, and agent graph (scripted LLM)
+scripts/                  train_and_backtest.py, fetch_rossmann.py
 notebooks/
-├── 01_walkthrough.ipynb         synthetic panel · data → forecast → scenario → agent
-└── 02_real_data_walkthrough.ipynb  UCI Online Retail II · same pipeline, real data
-configs/                 default.yaml (data, forecast, backtest, agent settings)
+├── 01_walkthrough.ipynb             synthetic panel · data → forecast → scenario
+│                                    → agent (runs against local Ollama, outputs
+│                                    committed so GitHub shows real tool traces)
+└── 02_real_data_walkthrough.ipynb   UCI Online Retail II · same pipeline, real data
+configs/default.yaml      data, forecast, backtest, and agent (Ollama by default)
 ```
 
 ---
@@ -252,7 +262,7 @@ back to a tool call:
    matches a value anywhere in the tool outputs within a small tolerance, and
    **hallucinated** otherwise.
 3. The mean hallucination rate across a fixed set of questions becomes a KPI that would
-   fail CI if it went above a threshold.
+   gate a release if it went above a threshold.
 
 This is a deliberately simple grounding check – the point isn't to catch every subtle
 misquote, it's to have a real guardrail that would surface a model that drifts off its
@@ -263,7 +273,6 @@ with explicit source IDs per number, and a human-in-the-loop review for edge cas
 
 ## What I'd add next
 
-
 - **More features** – known promotional calendars, exchange-rate signals, inventory
   constraints. Right now the model infers promos from history alone.
 - **More tools** – a `compare_scenarios` tool that runs two scenarios side by side and
@@ -271,7 +280,7 @@ with explicit source IDs per number, and a human-in-the-loop review for edge cas
 - **Evaluation harness** – expand to a few dozen seeded questions, split by
   question type (lookup / forecast / scenario / out-of-scope) and track hallucination
   rate by type.
-  - **Interval calibration** – isotonic or split-conformal calibration on a held-out window
+- **Interval calibration** – isotonic or split-conformal calibration on a held-out window
   to close the coverage gap.
 - **Deployment** – the Dockerfile builds a thin runtime image; a real deployment would
   split model training (batch job) from the agent server (FastAPI) and persist the

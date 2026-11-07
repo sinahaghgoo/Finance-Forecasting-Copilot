@@ -1,12 +1,13 @@
 .git
-.github
 .venv
 venv
 .ruff_cache
 .pytest_cache
 __pycache__
 *.pyc
-data/raw/*.parquet
-data/processed/*.parquet
-artifacts/*.pkl
+data/raw/*
+data/processed/*
+artifacts/*
 notebooks/.ipynb_checkpoints
+.env
+.env.local

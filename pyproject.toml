@@ -31,6 +31,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5"]
+kaggle = ["kaggle>=1.6"]
 
 [project.scripts]
 fincopilot = "fin_copilot.cli:main"

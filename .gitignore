@@ -11,10 +11,8 @@ dist/
 venv/
 .env
 .env.local
-data/raw/*.parquet
-data/raw/*.csv
-data/processed/*.parquet
-data/processed/*.csv
+data/raw/*
+data/processed/*
 artifacts/*
 !artifacts/.gitkeep
 !data/raw/.gitkeep

@@ -74,3 +74,25 @@ def test_coverage_bounds():
     lo = np.array([0.0, 1.0, 2.0, 5.0])
     hi = np.array([2.0, 3.0, 4.0, 10.0])
     assert coverage(y, lo, hi) == 0.75
+
+
+def test_minimum_history_days_covers_longest_lag():
+    from fin_copilot.forecasting.model import minimum_history_days
+
+    assert minimum_history_days() >= 365
+
+
+def test_recursive_forecast_horizon_matches_request():
+    df = _small_panel()
+    params = LGBMParams(n_estimators=80, num_leaves=15, min_data_in_leaf=20)
+    model = QuantileForecaster(quantiles=[0.1, 0.5, 0.9], params=params).fit(df)
+    pred = model.predict_recursive(df, horizon_days=10)
+    assert pred["date"].nunique() == 10
+    assert len(pred) == 10 * df[["category", "region"]].drop_duplicates().shape[0]
+
+
+def test_predict_without_fit_raises():
+    params = LGBMParams(n_estimators=10)
+    model = QuantileForecaster(quantiles=[0.5], params=params)
+    with pytest.raises(AssertionError):
+        model.predict_recursive(_small_panel(), horizon_days=3)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from fin_copilot.scenarios.gross_profit import ScenarioParams, apply_scenario, run_scenario
 
@@ -45,6 +46,27 @@ def test_cogs_increase_reduces_gross_profit():
     s = apply_scenario(b, ScenarioParams(cogs_change_pct=0.20))
     assert (s["cogs"] > b["cogs"]).all()
     assert (s["gross_profit"] < b["gross_profit"]).all()
+
+
+def test_volume_change_lifts_revenue_proportionally():
+    b = _baseline()
+    s = apply_scenario(b, ScenarioParams(volume_change_pct=0.10))
+    assert s["revenue"].sum() == pytest.approx(b["revenue"].sum() * 1.10, rel=1e-6)
+    assert s["cogs"].sum() == pytest.approx(b["cogs"].sum() * 1.10, rel=1e-6)
+
+
+def test_negative_price_increases_volume_with_negative_elasticity():
+    b = _baseline()
+    s = apply_scenario(b, ScenarioParams(price_change_pct=-0.05, price_elasticity=-1.5))
+    assert s["units_sold"].sum() > b["units_sold"].sum()
+    assert s["avg_price"].sum() < b["avg_price"].sum()
+
+
+def test_extreme_price_jump_with_high_elasticity_floors_volume_at_zero():
+    b = _baseline()
+    s = apply_scenario(b, ScenarioParams(price_change_pct=1.0, price_elasticity=-2.0))
+    assert (s["units_sold"] >= 0).all()
+    assert s["revenue"].sum() == pytest.approx(0.0, abs=1e-6)
 
 
 def test_run_scenario_summary_shape():

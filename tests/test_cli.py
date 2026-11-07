@@ -24,14 +24,36 @@ def test_cli_rejects_unknown_command(capsys):
         cli.main(["conjure-insights"])
 
 
-def test_cli_ask_fails_cleanly_without_api_key(monkeypatch):
+def test_cli_ask_openai_provider_requires_key(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.delenv("FINCOPILOT_MODEL_PROVIDER", raising=False)
+    monkeypatch.setenv("FINCOPILOT_MODEL_PROVIDER", "openai")
     try:
         import dotenv
         monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **kw: False)
     except ImportError:
         pass
-    with pytest.raises(RuntimeError, match="API_KEY"):
+    with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
+        cli.main(["ask", "hello"])
+
+
+def test_cli_ask_anthropic_provider_requires_key(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("FINCOPILOT_MODEL_PROVIDER", "anthropic")
+    try:
+        import dotenv
+        monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **kw: False)
+    except ImportError:
+        pass
+    with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
+        cli.main(["ask", "hello"])
+
+
+def test_cli_ask_unknown_provider_raises(monkeypatch):
+    monkeypatch.setenv("FINCOPILOT_MODEL_PROVIDER", "pigeon-post")
+    try:
+        import dotenv
+        monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **kw: False)
+    except ImportError:
+        pass
+    with pytest.raises(ValueError, match="Unknown provider"):
         cli.main(["ask", "hello"])

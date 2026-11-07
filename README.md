@@ -184,8 +184,20 @@ fincopilot ask "Forecast Footwear revenue in EMEA over the next 14 days"
 fincopilot eval-agent                              # full agent evaluation
 ```
 
-The `ask` and `eval-agent` commands need `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. Copy
-`.env.example` to `.env` and fill one in. All other commands run offline.
+The `ask` and `eval-agent` commands need an LLM backend. The default is **Ollama** running
+locally — free, no API key, works offline:
+
+```bash
+brew install ollama              # or: https://ollama.com
+brew services start ollama       # starts the local daemon on :11434
+ollama pull qwen2.5:7b           # ~4.7 GB; good tool-calling quality
+pip install -e ".[ollama]"
+fincopilot ask "Forecast Footwear revenue in EMEA over the next 14 days"
+```
+
+Hosted providers are supported too — set `FINCOPILOT_MODEL_PROVIDER=openai` or `anthropic`
+and the matching `*_API_KEY` in `.env` (see `.env.example`). All other commands run offline
+and need neither Ollama nor an API key.
 
 ### Docker
 
@@ -273,6 +285,6 @@ with explicit source IDs per number, and a human-in-the-loop review for edge cas
 |-------------------|--------------------------------------------------------|
 | Data & analytics  | Python, pandas, numpy, SQL-style groupby, statsmodels  |
 | Forecasting       | LightGBM (quantile objective), scikit-learn conventions |
-| Agent             | LangGraph, LangChain, OpenAI / Anthropic chat models   |
+| Agent             | LangGraph, LangChain; Ollama (default, local), OpenAI, Anthropic |
 | Evaluation        | pytest, scripted LangChain fake-model for agent tests  |
-| Packaging         | setuptools / pyproject, Docker, GitHub Actions CI, ruff |
+| Packaging         | setuptools / pyproject, Docker, ruff                   |

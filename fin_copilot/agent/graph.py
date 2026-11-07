@@ -40,6 +40,16 @@ def _build_llm(provider: str | None = None, model_name: str | None = None, tempe
         if not os.getenv("ANTHROPIC_API_KEY"):
             raise RuntimeError("ANTHROPIC_API_KEY is not set.")
         return ChatAnthropic(model=model_name, temperature=temperature)
+    if provider == "ollama":
+        try:
+            from langchain_ollama import ChatOllama
+        except ImportError as e:
+            raise RuntimeError(
+                "langchain-ollama is required for the Ollama provider. "
+                "Install with: pip install langchain-ollama"
+            ) from e
+        host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        return ChatOllama(model=model_name, base_url=host, temperature=temperature)
     raise ValueError(f"Unknown provider: {provider}")
 
 

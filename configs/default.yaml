@@ -23,6 +23,6 @@ backtest:
   fold_horizon_days: 28
 
 agent:
-  model_provider: "openai"
-  model_name: "gpt-4o-mini"
+  model_provider: "ollama"
+  model_name: "qwen2.5:7b"
   temperature: 0.0

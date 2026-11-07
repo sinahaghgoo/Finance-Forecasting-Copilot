@@ -9,8 +9,12 @@ A small, end-to-end analytics system that a finance team could actually sit next
   to reply with numbers produced by its own tools, and that is measured on accuracy and
   hallucination rate.
 
-Everything runs on synthetic data generated in this repo, so the project is self-contained
-and reproducible.
+The pipeline is designed to be data-source-agnostic. It ships with three loaders behind the
+same panel schema: a **synthetic** generator baked into the repo (the default, so everything
+is reproducible with no external dependencies), **UCI Online Retail II** (a public UK-based
+online-retail dataset, downloaded directly from UCI with no credentials needed), and
+**Kaggle Rossmann Store Sales** (requires a Kaggle API key). The forecaster, scenario engine
+and agent run unchanged on any of the three.
 
 ---
 
@@ -33,11 +37,15 @@ tool output.
 ## Architecture
 
 ```
-          ┌──────────────────────────┐
-          │  Synthetic finance panel │
-          │  (9 series × 1,826 days) │
-          └────────────┬─────────────┘
-                       │
+          ┌──────────────────────────────────────────────┐
+          │  Pluggable data source                       │
+          │   • synthetic panel (default, reproducible)  │
+          │   • UCI Online Retail II (public download)   │
+          │   • Kaggle Rossmann Store Sales (API key)    │
+          │  → normalised to one (date, category,        │
+          │     region, revenue, units, price, cogs, gp) │
+          └────────────────────┬─────────────────────────┘
+                               │
       feature engineering ▾    (calendar, lags, rolling stats)
                        │
           ┌────────────▼─────────────┐
@@ -77,7 +85,9 @@ tool output.
 
 ## Results
 
-Walk-forward backtest on the full data (6 folds × 28-day horizon, held out from the tail):
+### Synthetic panel (default)
+
+Walk-forward backtest, 6 folds × 28-day horizon, held out from the tail:
 
 | Metric           | Mean   | Std    |
 |------------------|--------|--------|
@@ -88,14 +98,24 @@ Walk-forward backtest on the full data (6 folds × 28-day horizon, held out from
 | Pinball @ q90    | 4,290  | 1,726  |
 | 80% PI coverage  | 0.65   | 0.04   |
 
-A few things worth noting:
+### UCI Online Retail II (real data, UK subset)
 
-- The 5% MAPE across six independent 28-day holdouts suggests the model generalises
-  cleanly through the seasonal cycle, not just the training window.
-- The empirical coverage of the nominal 80% intervals sits at ~65%. That gap is a real
-  feature of independent quantile regression on noisy series, and would be the first thing
-  to work on in a follow-up: isotonic calibration of the quantiles on a validation window,
-  or a conformal wrapper that gives distribution-free coverage guarantees.
+Same model, 4 folds × 14-day horizon on the UK series only (the countries with volume high
+enough for percentage-based metrics to be meaningful):
+
+| Metric              | Approx. |
+|---------------------|---------|
+| MAPE (per category) | 30 – 50 % |
+| 80% PI coverage     | ~ 0.63 |
+
+Real retail data is far noisier than the synthetic panel — big pre-Christmas spikes, only
+~740 days of history (so the yearly-lag feature has one cycle to learn from), and no promo
+calendar. The point forecast lands within tens of percent, but the 80% intervals still
+catch roughly two-thirds of the outcomes. That is the honest value of the uncertainty
+layer: when the point estimate is weak the model says so, instead of being confidently wrong.
+
+Natural next steps that would close the gap: weekly aggregation for the planning view,
+exogenous promo/marketing features, and isotonic or conformal calibration of the quantiles.
 
 ---
 
@@ -117,10 +137,30 @@ python scripts/train_and_backtest.py
 This generates the synthetic panel (`data/raw/finance_panel.parquet`), runs the walk-forward
 backtest, writes metrics to `artifacts/`, and caches the trained model.
 
+### Switching data source
+
+The active data source is chosen by the `FINCOPILOT_DATA_SOURCE` environment variable:
+
+```bash
+# synthetic (default) — no setup needed
+fincopilot backtest
+
+# UCI Online Retail II — downloads ~45 MB from archive.ics.uci.edu on first use
+FINCOPILOT_DATA_SOURCE=online_retail fincopilot backtest
+
+# Kaggle Rossmann Store Sales — needs kaggle.json and competition rules acceptance
+pip install -e ".[kaggle]"
+python scripts/fetch_rossmann.py           # one-off download + panel build
+FINCOPILOT_DATA_SOURCE=rossmann fincopilot backtest
+```
+
+Rossmann requires a Kaggle API token at `~/.kaggle/kaggle.json` plus accepting the
+competition rules once at <https://www.kaggle.com/competitions/rossmann-store-sales/rules>.
+
 ### CLI
 
 ```bash
-fincopilot build-data                              # regenerate the panel
+fincopilot build-data                              # regenerate the synthetic panel
 fincopilot backtest --folds 6 --horizon 28         # walk-forward CV
 fincopilot forecast --category Footwear --region EMEA --horizon 14
 fincopilot ask "Forecast Footwear revenue in EMEA over the next 14 days"
@@ -161,8 +201,10 @@ fin_copilot/
 └── evaluation/          forecast metrics, grounding / hallucination scoring, eval cases
 
 tests/                   pytest suite, incl. scripted-LLM agent integration test
-scripts/                 train + backtest + cache the production model
-notebooks/               one walkthrough notebook (data → forecast → scenario → agent)
+scripts/                 train + backtest + cache the production model, fetch_rossmann
+notebooks/
+├── 01_walkthrough.ipynb         synthetic panel · data → forecast → scenario → agent
+└── 02_real_data_walkthrough.ipynb  UCI Online Retail II · same pipeline, real data
 configs/                 default.yaml (data, forecast, backtest, agent settings)
 ```
 

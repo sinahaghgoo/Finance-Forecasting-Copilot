@@ -1,0 +1,28 @@
+data:
+  start_date: "2020-01-01"
+  end_date: "2024-12-31"
+  categories: ["Footwear", "Apparel", "Accessories"]
+  regions: ["EMEA", "Americas", "APAC"]
+  seed: 42
+
+forecast:
+  horizon_days: 28
+  quantiles: [0.1, 0.5, 0.9]
+  lgbm:
+    num_leaves: 64
+    learning_rate: 0.05
+    n_estimators: 400
+    min_data_in_leaf: 30
+    feature_fraction: 0.9
+    bagging_fraction: 0.9
+    bagging_freq: 5
+    verbose: -1
+
+backtest:
+  n_folds: 6
+  fold_horizon_days: 28
+
+agent:
+  model_provider: "openai"
+  model_name: "gpt-4o-mini"
+  temperature: 0.0

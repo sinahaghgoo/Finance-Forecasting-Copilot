@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+venv
+.ruff_cache
+.pytest_cache
+__pycache__
+*.pyc
+data/raw/*.parquet
+data/processed/*.parquet
+artifacts/*.pkl
+notebooks/.ipynb_checkpoints

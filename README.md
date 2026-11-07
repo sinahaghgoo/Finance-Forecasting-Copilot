@@ -12,8 +12,13 @@ A small, end-to-end analytics system that a finance team could actually sit next
 The pipeline is designed to be data-source-agnostic. It ships with three loaders behind the
 same panel schema: a **synthetic** generator baked into the repo (the default, so everything
 is reproducible with no external dependencies), **UCI Online Retail II** (a public UK-based
-online-retail dataset, downloaded directly from UCI), and **Kaggle Rossmann Store Sales**. 
+online-retail dataset, downloaded directly from UCI), and **Kaggle Rossmann Store Sales**.
 The forecaster, scenario engine and agent run unchanged on any of the three.
+
+### Preview on GitHub (no install needed)
+
+- [notebooks/01_walkthrough.ipynb](notebooks/01_walkthrough.ipynb) — synthetic data, executed end to end: forecast plot + intervals, 6-fold backtest, scenario comparison, and the **LangGraph agent answering three real questions** via a local Ollama model.
+- [notebooks/02_real_data_walkthrough.ipynb](notebooks/02_real_data_walkthrough.ipynb) — same pipeline on UCI Online Retail II, executed on the UK subset.
 
 ---
 
@@ -131,6 +136,21 @@ point estimate is weak the model says so, instead of being confidently wrong.
 
 Natural next steps for either real dataset: weekly aggregation for the planning view,
 exogenous promo/marketing features, and isotonic or conformal calibration of the quantiles.
+
+---
+
+## Data sources
+
+| Source | License | Link |
+|---|---|---|
+| Synthetic finance panel (3 categories × 3 regions × 5 years, daily) | MIT, generated in-repo by `fin_copilot/data/generate.py` | — |
+| UCI Online Retail II | CC BY 4.0 (UCI Machine Learning Repository) | <https://archive.ics.uci.edu/dataset/502/online+retail+ii> |
+| Kaggle Rossmann Store Sales (CC0 mirror) | CC0 1.0 Public Domain | <https://www.kaggle.com/datasets/pratyushakar/rossmann-store-sales> |
+| Original Rossmann competition (reference, not downloaded) | Kaggle competition T&Cs | <https://www.kaggle.com/competitions/rossmann-store-sales> |
+
+The Rossmann mirror exposes the same `train.csv` and `store.csv` as the original competition
+but is published as a plain CC0 dataset, so no competition-rules acceptance is needed — any
+Kaggle account that can run `kaggle datasets list` can download it.
 
 ---
 
@@ -297,3 +317,12 @@ with explicit source IDs per number, and a human-in-the-loop review for edge cas
 | Agent             | LangGraph, LangChain; Ollama (default, local), OpenAI, Anthropic |
 | Evaluation        | pytest, scripted LangChain fake-model for agent tests  |
 | Packaging         | setuptools / pyproject, Docker, ruff                   |
+
+---
+
+## Licence & author
+
+MIT licence — see [`pyproject.toml`](pyproject.toml) for the SPDX identifier.
+
+Built by **Sina Haghgoo** as a portfolio project.
+GitHub: [@sinahaghgoo](https://github.com/sinahaghgoo) · Email: shaghgoo47@gmail.com

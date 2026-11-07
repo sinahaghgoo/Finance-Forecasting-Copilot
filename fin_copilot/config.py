@@ -57,7 +57,7 @@ class Config:
     data: DataConfig
     forecast: ForecastConfig
     backtest: BacktestConfig
-    agent: AgentConfig = field(default_factory=lambda: AgentConfig("openai", "gpt-4o-mini"))
+    agent: AgentConfig = field(default_factory=lambda: AgentConfig("ollama", "qwen2.5:7b"))
 
 
 def load_config(path: str | Path | None = None) -> Config:
